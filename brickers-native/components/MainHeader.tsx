@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, View, Pressable } from 'react-native';
+import { StyleSheet, View, Pressable, Text } from 'react-native';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -10,13 +10,11 @@ import { Colors } from '@/constants/theme';
 export function MainHeader() {
     const router = useRouter();
     const insets = useSafeAreaInsets();
-    const colorScheme = useColorScheme();
-    const tint = Colors[colorScheme ?? 'light'].tint;
 
     return (
         <View style={[styles.container, { paddingTop: insets.top }]}>
             <View style={styles.content}>
-                {/* Empty view to help center the logo when there's an action on the right */}
+                {/* Empty left side for balance */}
                 <View style={styles.sidePlaceholder} />
 
                 {/* Centered Logo */}
@@ -28,16 +26,8 @@ export function MainHeader() {
                     />
                 </View>
 
-                {/* Gallery Action */}
-                <Pressable
-                    style={({ pressed }) => [
-                        styles.actionButton,
-                        pressed && styles.actionButtonPressed
-                    ]}
-                    onPress={() => router.push('/(tabs)/explore')}
-                >
-                    <IconSymbol name="safari.fill" size={24} color={tint} />
-                </Pressable>
+                {/* Right Actions - Removed Gallery/Login as requested */}
+                <View style={styles.rightActions} />
             </View>
         </View>
     );
@@ -46,13 +36,8 @@ export function MainHeader() {
 const styles = StyleSheet.create({
     container: {
         backgroundColor: '#ffffff',
-        borderBottomWidth: 1,
-        borderBottomColor: '#e0e0e0',
-        elevation: 8,
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.15,
-        shadowRadius: 4,
+        borderBottomWidth: 1.5,
+        borderBottomColor: '#000000',
         zIndex: 999,
     },
     content: {
@@ -60,10 +45,10 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingHorizontal: 20,
+        paddingHorizontal: 16,
     },
     sidePlaceholder: {
-        width: 44,
+        width: 80, // Approximate width of right actions to keep logo centered
     },
     logoContainer: {
         position: 'absolute',
@@ -76,17 +61,27 @@ const styles = StyleSheet.create({
         zIndex: -1,
     },
     logo: {
-        width: 120,
-        height: 40,
+        width: 140,
+        height: 48,
+    },
+    rightActions: {
+        flexDirection: 'row',
+        gap: 8,
     },
     actionButton: {
-        width: 40,
-        height: 40,
-        justifyContent: 'center',
-        alignItems: 'center',
-        borderRadius: 20,
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 8,
+        borderWidth: 1,
+        borderColor: '#000000',
+        backgroundColor: '#ffffff',
     },
     actionButtonPressed: {
-        backgroundColor: 'rgba(0,0,0,0.05)',
+        backgroundColor: '#f0f0f0',
+    },
+    actionText: {
+        fontSize: 14,
+        fontWeight: '700',
+        color: '#000000',
     },
 });

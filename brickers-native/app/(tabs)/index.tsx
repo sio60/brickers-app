@@ -57,7 +57,7 @@ export default function HomeScreen() {
             onPress={() => {
               setIsSheetOpen(false);
               translateY.value = SHEET_HEIGHT;
-              router.push('/camera');
+              router.push('/create-selection');
             }}
           >
             <Text style={styles.createButtonText}>Go to create</Text>

@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, View, Text, ActivityIndicator, SafeAreaView, TouchableOpacity } from 'react-native';
+import { StyleSheet, View, Text, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '@/lib/api';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 
 export default function GenerationScreen() {
     const { uri } = useLocalSearchParams<{ uri: string }>();

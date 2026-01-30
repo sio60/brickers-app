@@ -1,8 +1,8 @@
+import React, { useMemo, useRef, useEffect, useState } from "react";
+import { View, StyleSheet, Dimensions } from "react-native";
 import { Canvas, useFrame } from "@react-three/fiber/native";
-import { useMemo, useRef, useEffect } from "react";
+import { DeviceMotion } from 'expo-sensors';
 import * as THREE from "three";
-import { View, StyleSheet } from "react-native";
-import { Gyroscope } from 'expo-sensors';
 
 // Random utility functions
 const randomRange = (min: number, max: number) => Math.random() * (max - min) + min;
@@ -16,8 +16,11 @@ const randomColor = () => {
 const FRICTION = 0.98;
 const IMPULSE_STRENGTH = 0.15;
 const GRAVITY = 0.015;
-const FLOOR_Y = -15; // Adjusted for mobile screen height
+const FLOOR_Y = -15;
 const BOUNCE_DAMPING = 0.6;
+
+// Sensitivity for gyro
+const TILT_SENSITIVITY = 0.005;
 
 type ShapeType = "standard" | "long" | "cylinder" | "circle";
 
@@ -28,10 +31,10 @@ type BrickProps = {
     scale: number;
     shape: ShapeType;
     entryDirection?: "top" | "sides" | "float";
-    tiltRef: React.MutableRefObject<{ x: number; y: number }>;
+    sensorData: React.MutableRefObject<{ x: number, y: number }>;
 };
 
-type BrickSeed = Omit<BrickProps, "entryDirection" | "tiltRef"> & { id: number };
+type BrickSeed = Omit<BrickProps, "entryDirection" | "sensorData"> & { id: number };
 
 // Stud geometry helpers
 const Stud = ({ position, color }: { position: [number, number, number]; color: string }) => (
@@ -48,7 +51,7 @@ function Brick({
     scale,
     shape,
     entryDirection = "top",
-    tiltRef,
+    sensorData,
 }: BrickProps) {
     const meshRef = useRef<THREE.Mesh>(null);
 
@@ -90,27 +93,16 @@ function Brick({
         new THREE.Vector3(randomRange(-0.1, 0.1), randomRange(-0.1, 0.1), randomRange(-0.1, 0.1))
     );
 
+    // If float mode, start floating immediately
     const isFalling = useRef(!isFloat);
 
-    useFrame((state, delta) => {
+    useFrame((_, delta) => {
         if (!meshRef.current) return;
 
         const pos = position.current;
         const vel = velocity.current;
         const rot = meshRef.current.rotation;
         const angVel = angularVelocity.current;
-
-        // Apply tilt influence
-        // Gyroscope values are typically rad/s, we use them as force
-        // Note: 'expo-sensors' Gyroscope returns rotation rate. Accelerometer returns gravity vector.
-        // For "tilt", Accelerometer is better, but user said "Gyroscope" (or implied tilt).
-        // Usually "tilt" implies using Accelerometer to detect down vector relative to device.
-        // However, let's use the tiltRef (which will be populated by Gyroscope or Accelerometer).
-        // Let's assume tiltRef contains a force vector based on device tilt.
-
-        // Applying a small force based on tilt
-        vel.x += tiltRef.current.y * 0.005; // Tilt left/right affects X
-        vel.y -= tiltRef.current.x * 0.005; // Tilt forward/back affects Y (approx)
 
         if (isFalling.current) {
             vel.y -= GRAVITY; // gravity
@@ -138,7 +130,19 @@ function Brick({
                 }
             }
         } else {
-            // floating
+            // floating with sensor influence
+            const { x: tiltX, y: tiltY } = sensorData.current;
+
+            // X tilt rotates Z axis (roll), Y tilt rotates X axis (pitch) mostly.
+            // Simplified: tiltX affects velocity X, tiltY affects velocity Y or Z.
+            // DeviceMotion.rotation gamma/beta might be better but checking docs, 'rotation' object has alpha, beta, gamma.
+            // But we used a simple x/y ref from the parent. Let's see how we populate it.
+            // Assuming we pass gamma to x and beta to y.
+
+            vel.x += tiltX * TILT_SENSITIVITY;
+            vel.y -= tiltY * TILT_SENSITIVITY; // Negative because tilting 'up' (screen to face) usually means positive beta? Need to calibrate.
+            // Actually, let's just make it floaty.
+
             pos.add(vel);
 
             rot.x += angVel.x + delta * 0.2;
@@ -148,13 +152,27 @@ function Brick({
             angVel.multiplyScalar(FRICTION);
 
             // bounds
-            if (pos.y > 20 || pos.y < -20) vel.y *= -1;
-            if (pos.x > 15 || pos.x < -15) vel.x *= -1;
-            if (pos.z > 5 || pos.z < -30) vel.z *= -1;
+            if (pos.y > 15 || pos.y < -15) vel.y *= -1;
+            if (pos.x > 10 || pos.x < -10) vel.x *= -1;
+            if (pos.z > 5 || pos.z < -20) vel.z *= -1;
         }
 
         meshRef.current.position.copy(pos);
     });
+
+    const onHover = () => {
+        velocity.current.set(
+            randomRange(-IMPULSE_STRENGTH, IMPULSE_STRENGTH),
+            randomRange(IMPULSE_STRENGTH * 0.5, IMPULSE_STRENGTH),
+            randomRange(-IMPULSE_STRENGTH, IMPULSE_STRENGTH)
+        );
+        angularVelocity.current.set(
+            randomRange(-0.1, 0.1),
+            randomRange(-0.1, 0.1),
+            randomRange(-0.1, 0.1)
+        );
+        isFalling.current = false;
+    };
 
     const renderGeometry = () => {
         switch (shape) {
@@ -200,7 +218,12 @@ function Brick({
     };
 
     return (
-        <mesh ref={meshRef} rotation={initialRot} scale={scale}>
+        <mesh
+            ref={meshRef}
+            rotation={initialRot}
+            scale={scale}
+            onClick={onHover}
+        >
             <meshStandardMaterial color={color} roughness={0.3} metalness={0.1} />
             {renderGeometry()}
         </mesh>
@@ -208,39 +231,44 @@ function Brick({
 }
 
 export function Background3D({
-    entryDirection = "float",
+    entryDirection = "top",
 }: {
     entryDirection?: "top" | "sides" | "float";
 }) {
-    const brickCount = 80; // Increased count for denser visual effect
+    const brickCount = 30;
     const shapes: ShapeType[] = ["standard", "long", "cylinder", "circle"];
     const randomShape = () => shapes[Math.floor(Math.random() * shapes.length)];
-
-    // Use a ref to store tilt to avoid re-rendering the whole canvas
-    const tiltRef = useRef({ x: 0, y: 0 });
-
-    useEffect(() => {
-        // Enable gyroscope
-        Gyroscope.setUpdateInterval(16);
-        const subscription = Gyroscope.addListener(({ x, y }) => {
-            // Gyroscope measures rotation rate, but for "tilt" effect we usually want orientation.
-            // Alternatively, use Accelerometer for static tilt.
-            // Let's stick to Gyroscope as it reacts to movement which feels dynamic.
-            tiltRef.current = { x, y };
-        });
-
-        return () => subscription.remove();
-    }, []);
 
     const bricks = useMemo<BrickSeed[]>(() => {
         return Array.from({ length: brickCount }).map((_, i) => ({
             id: i,
-            position: [randomRange(-10, 10), randomRange(-10, 10), randomRange(-5, -20)],
+            position: [randomRange(-8, 8), randomRange(-10, 10), randomRange(-5, -15)],
             rotation: [randomRange(0, Math.PI), randomRange(0, Math.PI), 0],
             color: randomColor(),
-            scale: randomRange(0.8, 1.5),
+            scale: randomRange(0.6, 1.2),
             shape: randomShape(),
         }));
+    }, []);
+
+    // Sensor logic
+    const sensorData = useRef({ x: 0, y: 0 });
+
+    useEffect(() => {
+        const subscription = DeviceMotion.addListener((result) => {
+            // rotation alpha beta gamma
+            // beta is front-back, gamma is left-right
+            if (result.rotation) {
+                // Adjust sensitivity and direction as needed
+                sensorData.current = {
+                    x: result.rotation.gamma || 0,
+                    y: result.rotation.beta || 0
+                };
+            }
+        });
+
+        DeviceMotion.setUpdateInterval(50); // 20fps for sensor is usually enough
+
+        return () => subscription.remove();
     }, []);
 
     return (
@@ -251,7 +279,12 @@ export function Background3D({
                 <directionalLight position={[-5, 5, 5]} intensity={1} />
 
                 {bricks.map(({ id, ...props }) => (
-                    <Brick key={id} {...props} entryDirection={entryDirection} tiltRef={tiltRef} />
+                    <Brick
+                        key={id}
+                        {...props}
+                        entryDirection={entryDirection}
+                        sensorData={sensorData}
+                    />
                 ))}
             </Canvas>
         </View>

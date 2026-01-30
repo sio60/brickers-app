@@ -1,5 +1,6 @@
 import React from 'react';
-import { StyleSheet, View, Text, SafeAreaView, TouchableOpacity, Share } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, Share } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import ThreeDPreview from '@/components/preview/ThreeDPreview';
