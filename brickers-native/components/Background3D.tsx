@@ -1,8 +1,13 @@
 import React, { useMemo, useRef, useEffect, useState } from "react";
-import { View, StyleSheet, Dimensions } from "react-native";
+import { View, StyleSheet, Dimensions, Platform } from "react-native";
 import { Canvas, useFrame } from "@react-three/fiber/native";
-import { DeviceMotion } from 'expo-sensors';
 import * as THREE from "three";
+
+// 웹에서는 DeviceMotion 사용 불가
+let DeviceMotion: any = null;
+if (Platform.OS !== "web") {
+    DeviceMotion = require("expo-sensors").DeviceMotion;
+}
 
 // Random utility functions
 const randomRange = (min: number, max: number) => Math.random() * (max - min) + min;
@@ -254,7 +259,12 @@ export function Background3D({
     const sensorData = useRef({ x: 0, y: 0 });
 
     useEffect(() => {
-        const subscription = DeviceMotion.addListener((result) => {
+        // 웹에서는 DeviceMotion 사용 불가 - 센서 없이 작동
+        if (!DeviceMotion) {
+            return;
+        }
+
+        const subscription = DeviceMotion.addListener((result: any) => {
             // rotation alpha beta gamma
             // beta is front-back, gamma is left-right
             if (result.rotation) {

@@ -1,8 +1,9 @@
 // components/preview/ThreeDPreview.tsx
 import React, { Suspense, useEffect, useMemo, useRef, useState } from "react";
-import { View, StyleSheet, Text } from "react-native";
-import { Canvas } from "@react-three/fiber/native";
-import { OrbitControls, Bounds } from "@react-three/drei/native";
+import { View, StyleSheet, Text, LayoutChangeEvent } from "react-native";
+import { Canvas, useThree } from "@react-three/fiber/native";
+import { OrbitControls } from "@react-three/drei/native";
+import { GestureDetector, Gesture, GestureHandlerRootView } from "react-native-gesture-handler";
 import * as THREE from "three";
 
 // @ts-ignore
@@ -137,15 +138,9 @@ async function loadLDrawGroup(
       } else {
         if (!resolved.value) throw new Error("Content text is empty");
         console.log(`[LDraw] Parsing text (length: ${resolved.value.length})`);
-        // LDrawLoader.parse( text, path, onLoad )
-        // Some versions of LDrawLoader might have issues with empty path
-        const syncResult = loader.parse(resolved.value, partsBase, (g: any) => {
-          handleSuccess(g);
-        });
-        if (syncResult && !isSettled) {
-          console.log("[LDraw] loader.parse returned sync result");
-          handleSuccess(syncResult);
-        }
+        // three.js 0.182+ 에서는 parse(text, onLoad, onError) 시그니처
+        // path는 이미 setPartsLibraryPath()로 설정됨
+        loader.parse(resolved.value, handleSuccess, handleError);
       }
     } catch (e) {
       handleError(e);
@@ -162,12 +157,14 @@ function LdrModel({
   stepMode = false,
   currentStep = 1,
   onStepCountChange,
+  onModelSize,
 }: {
   url: string;
   partsBase: string;
   stepMode?: boolean;
   currentStep?: number;
   onStepCountChange?: (count: number) => void;
+  onModelSize?: (size: number) => void;
 }) {
   const [group, setGroup] = useState<THREE.Group | null>(null);
   const isActiveRef = useRef(true);
@@ -243,11 +240,18 @@ function LdrModel({
 
         const box = new THREE.Box3().setFromObject(g);
         const center = new THREE.Vector3();
+        const boxSize = new THREE.Vector3();
         box.getCenter(center);
+        box.getSize(boxSize);
 
         if (center && typeof center.x === "number" && isFinite(center.x)) {
           g.position.sub(center);
         }
+
+        // 모델 크기 계산 (대각선 길이)
+        const modelSize = boxSize.length();
+        console.log(`[LdrModel] Model size: ${modelSize}`);
+        onModelSize?.(modelSize);
 
         if (!isActiveRef.current) {
           disposeObject3D(g);
@@ -295,6 +299,32 @@ function LdrModel({
 }
 
 // ---------------------------
+// Camera Controller (모델 크기에 맞게 카메라 설정)
+// ---------------------------
+function CameraController({ modelSize, zoomLevel }: { modelSize: number; zoomLevel: number }) {
+  const { camera } = useThree();
+
+  useEffect(() => {
+    if (camera && modelSize > 0) {
+      // 모델이 화면에 잘 보이도록 카메라 거리 계산
+      // fov 45도 기준, 모델 크기의 2배 거리면 적당함
+      const baseDistance = modelSize * 2;
+      const distance = baseDistance / zoomLevel;
+
+      // 카메라를 대각선 방향에 배치
+      const dir = new THREE.Vector3(1, 1, 1).normalize();
+      camera.position.copy(dir.multiplyScalar(distance));
+      camera.lookAt(0, 0, 0);
+      camera.updateProjectionMatrix();
+
+      console.log(`[Camera] modelSize=${modelSize}, zoom=${zoomLevel}, distance=${distance}`);
+    }
+  }, [modelSize, zoomLevel, camera]);
+
+  return null;
+}
+
+// ---------------------------
 // Main Component
 // ---------------------------
 export default function ThreeDPreview({
@@ -304,6 +334,10 @@ export default function ThreeDPreview({
   onStepCountChange,
 }: ThreeDPreviewProps) {
   const [partsBase, setPartsBase] = useState<string>("");
+  const [size, setSize] = useState({ width: 0, height: 0 });
+  const [zoomLevel, setZoomLevel] = useState(1);
+  const [modelSize, setModelSize] = useState(0);
+  const baseZoomRef = useRef(1);
   const controlsRef = useRef<any>(null);
 
   useEffect(() => {
@@ -314,44 +348,91 @@ export default function ThreeDPreview({
     return () => { alive = false; };
   }, []);
 
+  const handleLayout = (event: LayoutChangeEvent) => {
+    const { width, height } = event.nativeEvent.layout;
+    setSize({ width, height });
+  };
+
+  // 핀치 줌 제스처
+  const pinchGesture = Gesture.Pinch()
+    .onStart(() => {
+      baseZoomRef.current = zoomLevel;
+    })
+    .onUpdate((e) => {
+      const newZoom = Math.max(0.3, Math.min(5, baseZoomRef.current * e.scale));
+      setZoomLevel(newZoom);
+    });
+
+  // 모바일에서 크기가 0이면 Canvas가 렌더링되지 않음
+  const canRender = size.width > 0 && size.height > 0;
+
   return (
-    <View style={styles.container}>
-      <Canvas camera={{ position: [250, 250, 250], fov: 45, near: 1, far: 100000 }}>
-        <Suspense fallback={null}>
-          <ambientLight intensity={0.9} />
-          <directionalLight position={[200, 300, 200]} intensity={1.2} />
+    <View style={styles.container} onLayout={handleLayout}>
+      {canRender ? (
+        <GestureHandlerRootView style={{ width: size.width, height: size.height }}>
+          <GestureDetector gesture={pinchGesture}>
+            <View style={{ flex: 1 }}>
+            <Canvas
+              style={{ flex: 1 }}
+              camera={{ position: [250, 250, 250], fov: 45, near: 1, far: 100000 }}
+              gl={{
+                antialias: true,
+                alpha: true,
+                preserveDrawingBuffer: true,
+                powerPreference: "high-performance",
+              }}
+              onCreated={({ gl }) => {
+                // 모바일 GL 컨텍스트 초기화
+                gl.setClearColor(0x000000, 0);
+              }}
+            >
+              <Suspense fallback={null}>
+                <ambientLight intensity={0.9} />
+                <directionalLight position={[200, 300, 200]} intensity={1.2} />
 
-          <Bounds fit clip observe margin={1.2}>
-            {url && partsBase ? (
-              <LdrModel
-                url={url}
-                partsBase={partsBase}
-                stepMode={stepMode}
-                currentStep={currentStep}
-                onStepCountChange={onStepCountChange}
-              />
-            ) : (
-              <mesh>
-                <boxGeometry args={[20, 20, 20]} />
-                <meshBasicMaterial color="transparent" />
-              </mesh>
-            )}
-          </Bounds>
+                <CameraController modelSize={modelSize} zoomLevel={zoomLevel} />
 
-          <OrbitControls
-            ref={controlsRef}
-            makeDefault
-            enablePan={false}
-            minDistance={20}
-            maxDistance={2000}
-          />
-        </Suspense>
-      </Canvas>
+                {url && partsBase ? (
+                  <LdrModel
+                    url={url}
+                    partsBase={partsBase}
+                    stepMode={stepMode}
+                    currentStep={currentStep}
+                    onStepCountChange={onStepCountChange}
+                    onModelSize={setModelSize}
+                  />
+                ) : (
+                  <mesh>
+                    <boxGeometry args={[20, 20, 20]} />
+                    <meshBasicMaterial color="transparent" />
+                  </mesh>
+                )}
+
+                <OrbitControls
+                  ref={controlsRef}
+                  makeDefault
+                  enablePan={false}
+                  enableZoom={false}
+                  enableDamping={false}
+                  minDistance={20}
+                  maxDistance={2000}
+                />
+              </Suspense>
+            </Canvas>
+            </View>
+          </GestureDetector>
+        </GestureHandlerRootView>
+      ) : (
+        <View style={styles.loading}>
+          <Text style={{ color: "#999" }}>로딩 중...</Text>
+        </View>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: "transparent" },
-  center: { flex: 1, justifyContent: "center", alignItems: "center" }
+  center: { flex: 1, justifyContent: "center", alignItems: "center" },
+  loading: { flex: 1, justifyContent: "center", alignItems: "center" },
 });
