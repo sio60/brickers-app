@@ -1,5 +1,6 @@
 import React from 'react';
-import { StyleSheet, View, Pressable, Text } from 'react-native';
+import { StyleSheet, View, Pressable, Text, TouchableOpacity, Alert } from 'react-native';
+import * as SecureStore from 'expo-secure-store';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -10,6 +11,15 @@ import { Colors } from '@/constants/theme';
 export function MainHeader() {
     const router = useRouter();
     const insets = useSafeAreaInsets();
+
+    const handleFakeLogin = async () => {
+        try {
+            await SecureStore.setItemAsync('accessToken', 'TEST_TOKEN_12345');
+            Alert.alert("성공", "테스트 토큰이 저장되었습니다! 이제 API를 호출해보세요.");
+        } catch (error) {
+            Alert.alert("실패", "토큰 저장 중 오류가 발생했습니다.");
+        }
+    };
 
     return (
         <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -26,8 +36,12 @@ export function MainHeader() {
                     />
                 </View>
 
-                {/* Right Actions - Removed Gallery/Login as requested */}
-                <View style={styles.rightActions} />
+                {/* Right Actions */}
+                <View style={styles.rightActions}>
+                    <TouchableOpacity onPress={handleFakeLogin} style={styles.actionButton}>
+                        <Text style={styles.actionText}>Test Login</Text>
+                    </TouchableOpacity>
+                </View>
             </View>
         </View>
     );

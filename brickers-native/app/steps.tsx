@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, Stack } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import ThreeDPreview from '@/components/preview/ThreeDPreview';
 
@@ -26,13 +26,14 @@ export default function StepsScreen() {
 
     return (
         <SafeAreaView style={styles.container}>
-            <View style={styles.header}>
+            <Stack.Screen options={{ headerShown: false }} />
+            {/* <View style={styles.header}>
                 <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
                     <Ionicons name="chevron-back" size={28} color="#000" />
                 </TouchableOpacity>
                 <Text style={styles.headerTitle}>Assembly Steps</Text>
                 <View style={{ width: 44 }} />
-            </View>
+            </View> */}
 
             <View style={styles.content}>
                 <View style={styles.previewContainer}>
