@@ -1,23 +1,36 @@
 import React from 'react';
-import { StyleSheet, View, Pressable, Text, TouchableOpacity, Alert } from 'react-native';
-import * as SecureStore from 'expo-secure-store';
+import { StyleSheet, View, Text, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { IconSymbol } from './ui/icon-symbol';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { Colors } from '@/constants/theme';
+import { useAuth } from '@/lib/AuthContext';
 
 export function MainHeader() {
     const router = useRouter();
     const insets = useSafeAreaInsets();
+    const { user, isLoggedIn, isLoading, login, logout } = useAuth();
 
-    const handleFakeLogin = async () => {
-        try {
-            await SecureStore.setItemAsync('accessToken', 'TEST_TOKEN_12345');
-            Alert.alert("성공", "테스트 토큰이 저장되었습니다! 이제 API를 호출해보세요.");
-        } catch (error) {
-            Alert.alert("실패", "토큰 저장 중 오류가 발생했습니다.");
+    const handleAuthAction = async () => {
+        if (isLoggedIn) {
+            // 로그아웃 확인
+            Alert.alert(
+                '로그아웃',
+                '정말 로그아웃 하시겠습니까?',
+                [
+                    { text: '취소', style: 'cancel' },
+                    {
+                        text: '로그아웃',
+                        style: 'destructive',
+                        onPress: async () => {
+                            await logout();
+                            Alert.alert('완료', '로그아웃되었습니다.');
+                        }
+                    }
+                ]
+            );
+        } else {
+            // 로그인 화면으로 이동
+            router.push('/login');
         }
     };
 
@@ -38,9 +51,29 @@ export function MainHeader() {
 
                 {/* Right Actions */}
                 <View style={styles.rightActions}>
-                    <TouchableOpacity onPress={handleFakeLogin} style={styles.actionButton}>
-                        <Text style={styles.actionText}>Test Login</Text>
-                    </TouchableOpacity>
+                    {isLoading ? (
+                        <ActivityIndicator size="small" color="#000" />
+                    ) : (
+                        <TouchableOpacity onPress={handleAuthAction} style={styles.actionButton}>
+                            {isLoggedIn ? (
+                                <View style={styles.userInfo}>
+                                    {user?.profileImage ? (
+                                        <Image
+                                            source={{ uri: user.profileImage }}
+                                            style={styles.profileImage}
+                                        />
+                                    ) : (
+                                        <Text style={styles.actionText}>👤</Text>
+                                    )}
+                                    <Text style={styles.nicknameText} numberOfLines={1}>
+                                        {user?.nickname || '사용자'}
+                                    </Text>
+                                </View>
+                            ) : (
+                                <Text style={styles.actionText}>로그인</Text>
+                            )}
+                        </TouchableOpacity>
+                    )}
                 </View>
             </View>
         </View>
@@ -97,5 +130,21 @@ const styles = StyleSheet.create({
         fontSize: 14,
         fontWeight: '700',
         color: '#000000',
+    },
+    userInfo: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        gap: 6,
+    },
+    profileImage: {
+        width: 24,
+        height: 24,
+        borderRadius: 12,
+    },
+    nicknameText: {
+        fontSize: 13,
+        fontWeight: '600',
+        color: '#000000',
+        maxWidth: 60,
     },
 });

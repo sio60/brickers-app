@@ -61,7 +61,10 @@ apiClient.interceptors.response.use(
 export const api = {
     // Auth
     login: (data: any) => apiClient.post('/api/auth/login', data),
+    mobileKakaoLogin: (kakaoAccessToken: string) =>
+        apiClient.post('/api/auth/mobile/kakao', { kakaoAccessToken }),
     me: () => apiClient.get('/api/auth/me'),
+    logout: () => apiClient.post('/api/auth/logout'),
 
     // Upload
     uploadImage: (formData: FormData) =>
