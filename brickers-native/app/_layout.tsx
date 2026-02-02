@@ -17,6 +17,7 @@ import { Buffer } from 'buffer';
 if (!global.Buffer) global.Buffer = Buffer;
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { AuthProvider } from '@/lib/AuthContext';
 
 // LDrawLoader 관련 에러는 부분적인 파츠 로딩 실패이므로 무시
 // 모델 자체는 대부분 렌더링됨
@@ -37,16 +38,19 @@ export default function RootLayout() {
   const colorScheme = useColorScheme();
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="create-selection" options={{ headerShown: false }} />
-        <Stack.Screen name="camera" options={{ headerShown: false, animation: 'slide_from_bottom' }} />
-        <Stack.Screen name="generation" options={{ headerShown: false, gestureEnabled: false }} />
-        <Stack.Screen name="result" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-      </Stack>
-      <StatusBar style="auto" />
-    </ThemeProvider>
+    <AuthProvider>
+      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+        <Stack>
+          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          <Stack.Screen name="create-selection" options={{ headerShown: false }} />
+          <Stack.Screen name="camera" options={{ headerShown: false, animation: 'slide_from_bottom' }} />
+          <Stack.Screen name="generation" options={{ headerShown: false, gestureEnabled: false }} />
+          <Stack.Screen name="result" options={{ headerShown: false }} />
+          <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
+          <Stack.Screen name="login" options={{ headerShown: false, presentation: 'modal' }} />
+        </Stack>
+        <StatusBar style="auto" />
+      </ThemeProvider>
+    </AuthProvider>
   );
 }
