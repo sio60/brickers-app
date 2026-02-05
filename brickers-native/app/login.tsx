@@ -1,4 +1,5 @@
-import { View, Text, TouchableOpacity, StyleSheet, Alert, ActivityIndicator, Image } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from 'react-native';
+import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { useAuth } from '@/lib/AuthContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -10,13 +11,13 @@ export default function LoginScreen() {
     const handleKakaoLogin = async () => {
         try {
             await login();
-            // 로그인 성공 시 이전 화면으로 돌아가기
+            // 로그인 완료 후 이전 화면으로 이동
             router.back();
         } catch (error: any) {
             console.error('Login error:', error);
             Alert.alert(
-                '로그인 실패',
-                error.message || '카카오 로그인 중 오류가 발생했습니다.',
+                '로그인 오류',
+                error.message || '로그인에 문제가 발생했습니다.',
                 [{ text: '확인' }]
             );
         }
@@ -25,10 +26,14 @@ export default function LoginScreen() {
     return (
         <SafeAreaView style={styles.container}>
             <View style={styles.content}>
-                {/* 로고/타이틀 영역 */}
+                {/* 헤더 영역 */}
                 <View style={styles.header}>
-                    <Text style={styles.logo}>BRICKERS</Text>
-                    <Text style={styles.subtitle}>나만의 브릭 도안을 만들어보세요</Text>
+                    <Image
+                        source={require('@/assets/images/logo.png')}
+                        style={styles.logoImage}
+                        contentFit="contain"
+                    />
+                    <Text style={styles.subtitle}>간편 로그인으로 시작해요</Text>
                 </View>
 
                 {/* 로그인 버튼 영역 */}
@@ -42,25 +47,18 @@ export default function LoginScreen() {
                             <ActivityIndicator color="#000" />
                         ) : (
                             <>
-                                <Text style={styles.kakaoIcon}>💬</Text>
-                                <Text style={styles.kakaoText}>카카오로 시작하기</Text>
+                                <Image
+                                    source={require('@/assets/icons/kakao.png')}
+                                    style={styles.kakaoIconImage}
+                                />
+                                <Text style={styles.kakaoText}>카카오로 로그인</Text>
                             </>
                         )}
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                        style={styles.skipButton}
-                        onPress={() => router.back()}
-                    >
-                        <Text style={styles.skipText}>둘러보기</Text>
                     </TouchableOpacity>
                 </View>
 
                 {/* 안내 문구 */}
-                <Text style={styles.notice}>
-                    로그인하면 작업 저장, 갤러리 등록 등{'\n'}
-                    더 많은 기능을 이용할 수 있어요
-                </Text>
+                <Text style={styles.notice}>로그인 시 이용약관 및 개인정보 처리방침에 동의한 것으로 간주됩니다</Text>
             </View>
         </SafeAreaView>
     );
@@ -81,16 +79,15 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginBottom: 60,
     },
-    logo: {
-        fontSize: 36,
-        fontWeight: '900',
-        letterSpacing: 2,
-        color: '#000',
+    logoImage: {
+        width: 180,
+        height: 60,
     },
     subtitle: {
         fontSize: 16,
         color: '#666',
-        marginTop: 12,
+        marginTop: 16,
+        fontFamily: 'NotoSansKR_400Regular',
     },
     loginSection: {
         width: '100%',
@@ -107,28 +104,23 @@ const styles = StyleSheet.create({
         borderRadius: 12,
         gap: 8,
     },
-    kakaoIcon: {
-        fontSize: 20,
+    kakaoIconImage: {
+        width: 20,
+        height: 20,
     },
     kakaoText: {
         fontSize: 16,
         fontWeight: '700',
         color: '#000',
+        fontFamily: 'NotoSansKR_700Bold',
     },
-    skipButton: {
-        alignItems: 'center',
-        paddingVertical: 16,
-    },
-    skipText: {
-        fontSize: 15,
-        color: '#888',
-        textDecorationLine: 'underline',
-    },
+
     notice: {
         marginTop: 40,
         fontSize: 13,
         color: '#999',
         textAlign: 'center',
         lineHeight: 20,
+        fontFamily: 'NotoSansKR_400Regular',
     },
 });

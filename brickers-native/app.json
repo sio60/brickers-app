@@ -45,8 +45,31 @@
       [
         "@react-native-seoul/kakao-login",
         {
-          "kakaoAppKey": "YOUR_KAKAO_NATIVE_APP_KEY",
-          "kakaoCustomUrlScheme": "kakaoYOUR_KAKAO_NATIVE_APP_KEY"
+          "kakaoAppKey": "c0771e171209e202cad7e02caecb7204",
+          "kakaoCustomUrlScheme": "kakaoc0771e171209e202cad7e02caecb7204",
+          "kotlinVersion": "2.1.10"
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "브릭 도안 제작을 위해 갤러리의 이미지를 불러옵니다.",
+          "cameraPermission": "브릭 도안 제작을 위해 사진을 촬영합니다."
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "브릭 도안 제작을 위해 카메라를 사용합니다.",
+          "microphonePermission": "브릭 도안 제작을 위해 마이크를 사용합니다."
+        }
+      ],
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "kotlinVersion": "2.1.10"
+          }
         }
       ]
     ],

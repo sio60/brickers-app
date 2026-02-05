@@ -85,6 +85,56 @@ export const api = {
     // Gallery
     getGallery: (page = 0, size = 10, sort = 'latest') =>
         apiClient.get(`/api/gallery`, { params: { page, size, sort } }),
+    searchGallery: (q?: string, tag?: string, page = 0, size = 10, sort = 'latest') =>
+        apiClient.get(`/api/gallery/search`, { params: { q, tag, page, size, sort } }),
+    getGalleryDetail: (id: string) =>
+        apiClient.get(`/api/gallery/${id}`),
+    getGalleryTags: () =>
+        apiClient.get(`/api/gallery/tags`),
+    getGalleryComments: (postId: string, page = 0, size = 20) =>
+        apiClient.get(`/api/gallery/${postId}/comments`, { params: { page, size } }),
+    postGalleryComment: (postId: string, data: { content: string; parentId?: string | null }) =>
+        apiClient.post(`/api/gallery/${postId}/comments`, data),
+    toggleGalleryReaction: (postId: string, type: 'LIKE' | 'DISLIKE' = 'LIKE') =>
+        apiClient.post(`/api/gallery/${postId}/reaction`, { type }),
+    toggleGalleryBookmark: (postId: string) =>
+        apiClient.post(`/api/gallery/${postId}/bookmark`),
+    getMyBookmarks: (page = 0, size = 12) =>
+        apiClient.get(`/api/gallery/bookmarks/my`, { params: { page, size } }),
+    registerToGallery: (data: {
+        title: string;
+        content?: string;
+        tags?: string[];
+        thumbnailUrl?: string;
+        ldrUrl?: string;
+        sourceImageUrl?: string;
+        glbUrl?: string;
+        visibility?: 'PUBLIC' | 'PRIVATE';
+    }) => apiClient.post(`/api/gallery`, data),
+
+    // MyPage
+    getMyProfile: () => apiClient.get(`/api/my/profile`),
+    updateMyProfile: (data: { nickname?: string; bio?: string; profileImage?: string }) =>
+        apiClient.patch(`/api/my/profile`, data),
+    getMyOverview: () => apiClient.get(`/api/my/overview`),
+    getMyJobs: (page = 0, size = 12) =>
+        apiClient.get(`/api/my/jobs`, { params: { page, size } }),
+    retryJob: (jobId: string) =>
+        apiClient.post(`/api/my/jobs/${jobId}/retry`),
+    getMyMembership: () => apiClient.get(`/api/my/membership`),
+
+    // Inquiries / Reports
+    getMyInquiries: (page = 0, size = 20) =>
+        apiClient.get(`/api/inquiries/my`, { params: { page, size } }),
+    getMyReports: (page = 0, size = 20) =>
+        apiClient.get(`/api/reports/my`, { params: { page, size } }),
+
+    // Payments (web checkout)
+    getPaymentPlans: () => apiClient.get(`/api/payments/plans`),
+    createCheckout: (planId: string) =>
+        apiClient.post(`/api/payments/checkout`, { planId }),
+    deleteMyAccount: () =>
+        apiClient.delete(`/api/my/account`),
 };
 
 export default apiClient;

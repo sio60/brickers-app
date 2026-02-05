@@ -23,13 +23,11 @@ export default function CreateSelectionScreen() {
             <View style={styles.content}>
                 {/* 3D Preview Section - Top half */}
                 <View style={styles.previewContainer}>
-                    <ThreeDPreview url="assets/model/car.ldr" />
+                    <ThreeDPreview url="assets/model/car.ldr" showZoomControls={false} />
                 </View>
 
                 {/* Buttons Section - Bottom half */}
                 <View style={styles.buttonContainer}>
-
-
                     <TouchableOpacity
                         style={[styles.mainButton, styles.createButton]}
                         onPress={() => router.push('/steps')}
@@ -37,7 +35,7 @@ export default function CreateSelectionScreen() {
                         <Ionicons name="hammer-outline" size={24} color="#000" style={styles.buttonIcon} />
                         <View>
                             <Text style={styles.buttonText}>Create</Text>
-                            <Text style={styles.buttonSubtext}>Build this car step-by-step</Text>
+                            <Text style={styles.buttonSubtext}>단계별로 조립하는 모델</Text>
                         </View>
                     </TouchableOpacity>
 
@@ -48,7 +46,7 @@ export default function CreateSelectionScreen() {
                         <Ionicons name="camera-outline" size={24} color="#fff" style={styles.buttonIcon} />
                         <View>
                             <Text style={[styles.buttonText, { color: '#fff' }]}>Upload Image</Text>
-                            <Text style={[styles.buttonSubtext, { color: '#eee' }]}>Generate from your photo</Text>
+                            <Text style={[styles.buttonSubtext, { color: '#eee' }]}>사진으로 자동 생성</Text>
                         </View>
                     </TouchableOpacity>
                 </View>
@@ -79,6 +77,7 @@ const styles = StyleSheet.create({
         fontSize: 18,
         fontWeight: '800',
         color: '#000',
+        fontFamily: 'NotoSansKR_700Bold',
     },
     content: {
         flex: 1,
@@ -96,7 +95,7 @@ const styles = StyleSheet.create({
     buttonContainer: {
         flex: 1,
         paddingHorizontal: 24,
-        paddingTop: 32,
+        paddingTop: 24,
         alignItems: 'center',
     },
     description: {
@@ -106,15 +105,16 @@ const styles = StyleSheet.create({
         lineHeight: 22,
         marginBottom: 32,
         fontWeight: '500',
+        fontFamily: 'NotoSansKR_400Regular',
     },
     mainButton: {
         width: '100%',
-        paddingVertical: 20,
+        paddingVertical: 14,
         paddingHorizontal: 24,
         borderRadius: 20,
         flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 16,
+        marginBottom: 12,
         elevation: 2,
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
@@ -137,11 +137,13 @@ const styles = StyleSheet.create({
         fontWeight: '900',
         color: '#000',
         textTransform: 'uppercase',
+        fontFamily: 'NotoSansKR_700Bold',
     },
     buttonSubtext: {
         fontSize: 13,
         color: '#555',
         marginTop: 2,
         fontWeight: '600',
+        fontFamily: 'NotoSansKR_400Regular',
     },
 });

@@ -1,27 +1,50 @@
-import React, { useEffect, useState } from 'react';
-import { StyleSheet, View, Text, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { useEffect, useRef, useState, useCallback } from 'react';
+import { StyleSheet, View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { api } from '@/lib/api';
+import { getSavedLevel, resolveLevel } from '@/lib/level';
 import * as FileSystem from 'expo-file-system/legacy';
+import MazeGame from '@/components/MazeGame';
 
 export default function GenerationScreen() {
-    const { uri } = useLocalSearchParams<{ uri: string }>();
+    const { uri, level } = useLocalSearchParams<{ uri: string; level?: string | string[] }>();
     const [status, setStatus] = useState<'uploading' | 'processing' | 'finishing' | 'error'>('uploading');
     const [progress, setProgress] = useState(0);
     const [jobId, setJobId] = useState<string | null>(null);
     const [ldrUrl, setLdrUrl] = useState<string | null>(null);
+    const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const lastUriRef = useRef<string | null>(null);
+    const hasCompletedRef = useRef(false);
     const router = useRouter();
 
     useEffect(() => {
-        if (uri) {
-            handleGeneration(uri);
-        }
+        if (!uri || lastUriRef.current === uri) return;
+        lastUriRef.current = uri;
+        hasCompletedRef.current = false;
+        handleGeneration(uri);
     }, [uri]);
+
+    useEffect(() => {
+        return () => {
+            if (pollTimerRef.current) {
+                clearInterval(pollTimerRef.current);
+                pollTimerRef.current = null;
+            }
+        };
+    }, []);
+
+    const stopPolling = useCallback(() => {
+        if (pollTimerRef.current) {
+            clearInterval(pollTimerRef.current);
+            pollTimerRef.current = null;
+        }
+    }, []);
 
     const handleGeneration = async (fileUri: string) => {
         try {
+            stopPolling();
             // 1. Upload Image (Multipart)
             setStatus('uploading');
             const filename = `mobile_${Date.now()}.jpg`;
@@ -39,10 +62,20 @@ export default function GenerationScreen() {
 
             // 2. Start Generation
             setStatus('processing');
+            const savedLevel = await getSavedLevel();
+            const hasLevelParam = Array.isArray(level) ? level.length > 0 : !!level;
+            const resolvedLevel = hasLevelParam ? resolveLevel(level) : savedLevel;
+            const levelKey = (resolvedLevel || 'L2').toUpperCase();
+            const levelMap: Record<string, { age: string; budget: number }> = {
+                L1: { age: '4-5', budget: 400 },
+                L2: { age: '6-7', budget: 450 },
+                L3: { age: '8-10', budget: 500 },
+            };
+            const levelConfig = levelMap[levelKey] || levelMap.L2;
             const genRes = await api.startGeneration({
                 sourceImageUrl: publicUrl,
-                age: '8-10', // Default for mobile
-                budget: 150,
+                age: levelConfig.age,
+                budget: levelConfig.budget,
                 title: filename
             });
 
@@ -58,24 +91,32 @@ export default function GenerationScreen() {
         }
     };
 
-    const startPolling = async (id: string) => {
-        const timer = setInterval(async () => {
+    const startPolling = useCallback((id: string) => {
+        stopPolling();
+        pollTimerRef.current = setInterval(async () => {
             try {
                 const res = await api.getJobStatus(id);
                 const data = res.data;
 
-                if (data.status === 'COMPLETED') {
-                    clearInterval(timer);
-                    setLdrUrl(data.ldrUrl);
+                const resolvedLdrUrl = data.ldrUrl || data.ldr_url;
+                const isDone = data.status === 'DONE' || data.status === 'COMPLETED' || data.stage === 'DONE';
+                const isReady = !!resolvedLdrUrl;
+
+                if ((isDone || isReady) && !hasCompletedRef.current) {
+                    hasCompletedRef.current = true;
+                    stopPolling();
+                    if (resolvedLdrUrl) setLdrUrl(resolvedLdrUrl);
                     setStatus('finishing');
 
-                    // Navigate to result screen
-                    router.replace({
-                        pathname: '/result',
-                        params: { ldrUrl: data.ldrUrl, jobId: id }
-                    });
-                } else if (data.status === 'FAILED') {
-                    clearInterval(timer);
+                    // Navigate to result screen when LDR is ready
+                    if (resolvedLdrUrl) {
+                        router.replace({
+                            pathname: '/result',
+                            params: { ldrUrl: resolvedLdrUrl, jobId: id }
+                        });
+                    }
+                } else if (data.status === 'FAILED' || data.status === 'ERROR') {
+                    stopPolling();
                     setStatus('error');
                 } else {
                     // Update progress based on stages if possible
@@ -85,9 +126,7 @@ export default function GenerationScreen() {
                 console.error('Polling error:', err);
             }
         }, 3000);
-
-        return () => clearInterval(timer);
-    };
+    }, [router, stopPolling]);
 
     return (
         <SafeAreaView style={styles.container}>
@@ -95,7 +134,7 @@ export default function GenerationScreen() {
                 <TouchableOpacity onPress={() => router.back()}>
                     <Ionicons name="close" size={28} color="#000" />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>AI 레고 제작 중</Text>
+                <Text style={styles.headerTitle}>AI 생성 중</Text>
                 <View style={{ width: 28 }} />
             </View>
 
@@ -103,21 +142,22 @@ export default function GenerationScreen() {
                 {status === 'error' ? (
                     <View style={styles.centered}>
                         <Ionicons name="alert-circle" size={64} color="#ff4444" />
-                        <Text style={styles.errorText}>문제가 발생했습니다. 다시 시도해주세요.</Text>
+                        <Text style={styles.errorText}>오류가 발생했습니다. 다시 시도해주세요.</Text>
                         <TouchableOpacity style={styles.retryBtn} onPress={() => router.replace('/camera')}>
-                            <Text style={styles.retryText}>카메라로 돌아가기</Text>
+                            <Text style={styles.retryText}>다시 시도</Text>
                         </TouchableOpacity>
                     </View>
+                ) : status === 'processing' ? (
+                    <MazeGame />
                 ) : (
                     <View style={styles.centered}>
                         <ActivityIndicator size="large" color="#ffe135" />
                         <Text style={styles.statusText}>
-                            {status === 'uploading' && '이미지를 서버로 전송 중...'}
-                            {status === 'processing' && 'AI가 브릭을 조립하고 있어요...'}
-                            {status === 'finishing' && '거의 다 됐어요!'}
+                            {status === 'uploading' && '이미지 업로드 중..'}
+                            {status === 'finishing' && '마무리 중...'}
                         </Text>
                         <View style={styles.progressContainer}>
-                            <View style={[styles.progressBar, { width: status === 'uploading' ? '30%' : status === 'processing' ? '70%' : '100%' }]} />
+                            <View style={[styles.progressBar, { width: status === 'uploading' ? '30%' : '100%' }]} />
                         </View>
                     </View>
                 )}
@@ -140,6 +180,7 @@ const styles = StyleSheet.create({
     headerTitle: {
         fontSize: 18,
         fontWeight: '800',
+        fontFamily: 'NotoSansKR_700Bold',
     },
     content: {
         flex: 1,
@@ -154,12 +195,14 @@ const styles = StyleSheet.create({
         fontSize: 16,
         fontWeight: '600',
         color: '#333',
+        fontFamily: 'NotoSansKR_500Medium',
     },
     errorText: {
         marginTop: 16,
         fontSize: 16,
         color: '#666',
         textAlign: 'center',
+        fontFamily: 'NotoSansKR_400Regular',
     },
     retryBtn: {
         marginTop: 32,
@@ -171,6 +214,7 @@ const styles = StyleSheet.create({
     retryText: {
         color: '#fff',
         fontWeight: '700',
+        fontFamily: 'NotoSansKR_500Medium',
     },
     progressContainer: {
         width: '100%',

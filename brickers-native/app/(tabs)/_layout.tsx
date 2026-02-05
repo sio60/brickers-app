@@ -1,4 +1,4 @@
-import { Tabs } from 'expo-router';
+import { Tabs, usePathname } from 'expo-router';
 import React from 'react';
 
 import { HapticTab } from '@/components/haptic-tab';
@@ -7,15 +7,19 @@ import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 import { MainHeader } from '@/components/MainHeader';
+import { useAuth } from '@/lib/AuthContext';
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
+  const { isLoggedIn, isLoading } = useAuth();
+  const pathname = usePathname();
+  const hideHeader = pathname.includes('/explore');
 
   return (
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: Colors[colorScheme ?? 'light'].tint,
-        headerShown: true,
+        headerShown: isLoggedIn && !isLoading && !hideHeader,
         header: () => <MainHeader />,
         tabBarButton: HapticTab,
         tabBarStyle: { display: 'none' },
@@ -31,7 +35,7 @@ export default function TabLayout() {
         name="explore"
         options={{
           title: 'Gallery',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="safari.fill" color={color} />,
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
         }}
       />
     </Tabs>
