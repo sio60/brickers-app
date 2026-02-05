@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, ActivityIndicator, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { api } from '@/lib/api';
+import { api, API_BASE } from '@/lib/api';
 import { getSavedLevel, resolveLevel } from '@/lib/level';
 import * as FileSystem from 'expo-file-system/legacy';
 import MazeGame from '@/components/MazeGame';
+import EventSource from 'react-native-sse';
 
 export default function GenerationScreen() {
     const { uri, level } = useLocalSearchParams<{ uri: string; level?: string | string[] }>();
@@ -14,7 +15,10 @@ export default function GenerationScreen() {
     const [progress, setProgress] = useState(0);
     const [jobId, setJobId] = useState<string | null>(null);
     const [ldrUrl, setLdrUrl] = useState<string | null>(null);
+    const [agentLogs, setAgentLogs] = useState<string[]>([]);
     const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+    const sseRef = useRef<EventSource | null>(null);
+    const logScrollRef = useRef<ScrollView>(null);
     const lastUriRef = useRef<string | null>(null);
     const hasCompletedRef = useRef(false);
     const router = useRouter();
@@ -32,6 +36,10 @@ export default function GenerationScreen() {
                 clearInterval(pollTimerRef.current);
                 pollTimerRef.current = null;
             }
+            if (sseRef.current) {
+                sseRef.current.close();
+                sseRef.current = null;
+            }
         };
     }, []);
 
@@ -40,6 +48,26 @@ export default function GenerationScreen() {
             clearInterval(pollTimerRef.current);
             pollTimerRef.current = null;
         }
+    }, []);
+
+    const connectAgentLogs = useCallback((id: string) => {
+        if (sseRef.current) {
+            sseRef.current.close();
+        }
+        const url = `${API_BASE}/api/kids/jobs/${id}/logs/stream`;
+        const es = new EventSource(url);
+        sseRef.current = es;
+
+        es.addEventListener('agent-log', (event: any) => {
+            if (event.data) {
+                setAgentLogs(prev => [...prev.slice(-49), event.data]);
+                setTimeout(() => logScrollRef.current?.scrollToEnd({ animated: true }), 50);
+            }
+        });
+
+        es.addEventListener('error', () => {
+            // SSE 끊기면 무시 (폴링이 메인 로직)
+        });
     }, []);
 
     const handleGeneration = async (fileUri: string) => {
@@ -82,6 +110,9 @@ export default function GenerationScreen() {
             const newJobId = genRes.data.jobId;
             setJobId(newJobId);
 
+            // 3. SSE 로그 스트리밍
+            connectAgentLogs(newJobId);
+
             // 4. Polling
             startPolling(newJobId);
 
@@ -105,6 +136,7 @@ export default function GenerationScreen() {
                 if ((isDone || isReady) && !hasCompletedRef.current) {
                     hasCompletedRef.current = true;
                     stopPolling();
+                    if (sseRef.current) { sseRef.current.close(); sseRef.current = null; }
                     if (resolvedLdrUrl) setLdrUrl(resolvedLdrUrl);
                     setStatus('finishing');
 
@@ -148,7 +180,30 @@ export default function GenerationScreen() {
                         </TouchableOpacity>
                     </View>
                 ) : status === 'processing' ? (
-                    <MazeGame />
+                    <View style={{ flex: 1 }}>
+                        <View style={{ flex: 1 }}>
+                            <MazeGame />
+                        </View>
+                        {agentLogs.length > 0 && (
+                            <View style={styles.logPanel}>
+                                <View style={styles.logHeader}>
+                                    <Text style={styles.logHeaderText}>AI 진행 상황</Text>
+                                </View>
+                                <ScrollView
+                                    ref={logScrollRef}
+                                    style={styles.logScroll}
+                                    showsVerticalScrollIndicator={false}
+                                >
+                                    {agentLogs.map((log, i) => (
+                                        <Text key={i} style={[
+                                            styles.logText,
+                                            i === agentLogs.length - 1 && styles.logTextLatest,
+                                        ]}>{log}</Text>
+                                    ))}
+                                </ScrollView>
+                            </View>
+                        )}
+                    </View>
                 ) : (
                     <View style={styles.centered}>
                         <ActivityIndicator size="large" color="#ffe135" />
@@ -227,5 +282,40 @@ const styles = StyleSheet.create({
     progressBar: {
         height: '100%',
         backgroundColor: '#ffe135',
-    }
+    },
+    logPanel: {
+        backgroundColor: '#1a1a2e',
+        borderTopLeftRadius: 16,
+        borderTopRightRadius: 16,
+        maxHeight: 160,
+        paddingBottom: 8,
+    },
+    logHeader: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingHorizontal: 16,
+        paddingVertical: 10,
+        borderBottomWidth: StyleSheet.hairlineWidth,
+        borderBottomColor: 'rgba(255,255,255,0.1)',
+    },
+    logHeaderText: {
+        color: '#ffe135',
+        fontSize: 13,
+        fontWeight: '700',
+        fontFamily: 'NotoSansKR_700Bold',
+    },
+    logScroll: {
+        paddingHorizontal: 16,
+        paddingTop: 6,
+    },
+    logText: {
+        color: 'rgba(255,255,255,0.5)',
+        fontSize: 12,
+        lineHeight: 20,
+        fontFamily: 'NotoSansKR_400Regular',
+    },
+    logTextLatest: {
+        color: '#fff',
+        fontWeight: '600',
+    },
 });
