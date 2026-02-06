@@ -13,7 +13,7 @@ import { LDrawLoader } from "three/examples/jsm/loaders/LDrawLoader.js";
 import { LDrawConditionalLineMaterial } from "three/examples/jsm/materials/LDrawConditionalLineMaterial.js";
 
 import { Asset } from "expo-asset";
-import * as FileSystem from "expo-file-system/legacy";
+import * as FileSystem from "expo-file-system";
 
 // ---------------------------
 // Constants
@@ -279,6 +279,8 @@ function LdrModel({
         }
 
         console.log(`[LdrModel] Success: ${g.children.length} nodes`);
+        console.log(`[LdrModel] stepMode=${stepMode}, will build layer groups`);
+
         // Build layer groups by Y center to show steps by layer
         const layers: number[][] = [];
         const items: { index: number; y: number }[] = [];
@@ -306,6 +308,8 @@ function LdrModel({
           }
         }
         if (current.length) layers.push(current);
+
+        console.log(`[LdrModel] Layer groups created: ${layers.length} layers from ${g.children.length} children`);
 
         setLayerGroups(layers);
         onStepCountChange?.(layers.length);

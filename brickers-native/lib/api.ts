@@ -65,6 +65,7 @@ export const api = {
         apiClient.post('/api/auth/mobile/kakao', { kakaoAccessToken }),
     me: () => apiClient.get('/api/auth/me'),
     logout: () => apiClient.post('/api/auth/logout'),
+    queryChat: (data: { message: string, language: string }) => apiClient.post('/api/chat/query', data),
 
     // Upload
     uploadImage: (formData: FormData) =>
@@ -124,6 +125,9 @@ export const api = {
     getMyMembership: () => apiClient.get(`/api/my/membership`),
 
     // Inquiries / Reports
+    submitInquiry: (data: { title: string, content: string }) => apiClient.post('/api/inquiries', data),
+    submitReport: (data: { targetType: string, targetId: string, reason: string, details: string }) =>
+        apiClient.post('/api/reports', data),
     getMyInquiries: (page = 0, size = 20) =>
         apiClient.get(`/api/inquiries/my`, { params: { page, size } }),
     getMyReports: (page = 0, size = 20) =>

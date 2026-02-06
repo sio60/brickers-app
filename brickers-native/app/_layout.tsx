@@ -113,6 +113,18 @@ export default function RootLayout() {
             />
             <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
             <Stack.Screen name="login" options={{ headerShown: false, presentation: 'modal' }} />
+            <Stack.Screen
+              name="brick-bot"
+              options={{
+                title: '브릭봇 문의',
+                headerShown: true,
+                headerTitleStyle: { fontFamily: 'NotoSansKR_700Bold', color: '#fff' },
+                headerTitleAlign: 'center',
+                headerStyle: { backgroundColor: '#000' },
+                headerTintColor: '#fff',
+                headerBackTitle: '',
+              }}
+            />
           </Stack>
           <StatusBar style="auto" />
         </ThemeProvider>

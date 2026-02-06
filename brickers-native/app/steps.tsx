@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { StyleSheet, View, Text, TouchableOpacity, Dimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter, Stack } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import ThreeDPreview from '@/components/preview/ThreeDPreview';
 
@@ -9,8 +9,16 @@ const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 export default function StepsScreen() {
     const router = useRouter();
+    const { ldrUrl } = useLocalSearchParams<{ ldrUrl?: string }>();
     const [currentStep, setCurrentStep] = useState(1);
     const [totalSteps, setTotalSteps] = useState(1);
+
+    const resolvedLdrUrl = Array.isArray(ldrUrl) ? ldrUrl[0] : ldrUrl;
+
+    useEffect(() => {
+        console.log('[StepsScreen] Received ldrUrl param:', ldrUrl);
+        console.log('[StepsScreen] Resolved ldrUrl:', resolvedLdrUrl);
+    }, [ldrUrl, resolvedLdrUrl]);
 
     const handleNext = () => {
         if (currentStep < totalSteps) {
@@ -26,19 +34,18 @@ export default function StepsScreen() {
 
     return (
         <SafeAreaView style={styles.container}>
-            <Stack.Screen options={{ headerShown: false }} />
-            {/* <View style={styles.header}>
+            <View style={styles.header}>
                 <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
                     <Ionicons name="chevron-back" size={28} color="#000" />
                 </TouchableOpacity>
-                <Text style={styles.headerTitle}>Assembly Steps</Text>
+                <Text style={styles.headerTitle}>조립 단계</Text>
                 <View style={{ width: 44 }} />
-            </View> */}
+            </View>
 
             <View style={styles.content}>
                 <View style={styles.previewContainer}>
                     <ThreeDPreview
-                        url="assets/model/car.ldr"
+                        url={resolvedLdrUrl || null}
                         stepMode={true}
                         currentStep={currentStep}
                         onStepCountChange={setTotalSteps}
@@ -60,7 +67,7 @@ export default function StepsScreen() {
                             disabled={currentStep === 1}
                         >
                             <Ionicons name="arrow-back" size={24} color={currentStep === 1 ? '#ccc' : '#000'} />
-                            <Text style={[styles.navButtonText, currentStep === 1 && styles.disabledText]}>PREV</Text>
+                            <Text style={[styles.navButtonText, currentStep === 1 && styles.disabledText]}>이전</Text>
                         </TouchableOpacity>
 
                         <TouchableOpacity
@@ -68,7 +75,7 @@ export default function StepsScreen() {
                             onPress={handleNext}
                             disabled={currentStep === totalSteps}
                         >
-                            <Text style={[styles.navButtonText, styles.nextButtonText, currentStep === totalSteps && styles.disabledText]}>NEXT</Text>
+                            <Text style={[styles.navButtonText, styles.nextButtonText, currentStep === totalSteps && styles.disabledText]}>다음</Text>
                             <Ionicons name="arrow-forward" size={24} color={currentStep === totalSteps ? '#ccc' : '#fff'} />
                         </TouchableOpacity>
                     </View>
@@ -76,9 +83,9 @@ export default function StepsScreen() {
 
                 <TouchableOpacity
                     style={styles.homeButton}
-                    onPress={() => router.replace('/(tabs)')}
+                    onPress={() => router.back()}
                 >
-                    <Text style={styles.homeButtonText}>FINISH & GO HOME</Text>
+                    <Text style={styles.homeButtonText}>돌아가기</Text>
                 </TouchableOpacity>
             </View>
         </SafeAreaView>

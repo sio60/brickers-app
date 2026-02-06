@@ -49,6 +49,11 @@ export function MainHeader() {
         router.push('/(tabs)/explore');
     };
 
+    const handleBrickBot = () => {
+        setMenuVisible(false);
+        router.push('/brick-bot');
+    };
+
     return (
         <View style={[styles.container, { paddingTop: insets.top }]}>
             <View style={styles.content}>
@@ -104,6 +109,12 @@ export function MainHeader() {
                                 <View style={styles.menuItemRow}>
                                     <Ionicons name="images-outline" size={20} color="#333" />
                                     <Text style={styles.menuItemText}>갤러리</Text>
+                                </View>
+                            </TouchableOpacity>
+                            <TouchableOpacity style={styles.menuItem} onPress={handleBrickBot}>
+                                <View style={styles.menuItemRow}>
+                                    <Ionicons name="chatbubble-ellipses-outline" size={20} color="#333" />
+                                    <Text style={styles.menuItemText}>브릭봇 문의</Text>
                                 </View>
                             </TouchableOpacity>
                             <View style={styles.menuDivider} />

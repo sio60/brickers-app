@@ -9,7 +9,11 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.asdfgjkk.brickersnative",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "adaptiveIcon": {
@@ -21,7 +25,10 @@
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
       "package": "com.asdfgjkk.brickersnative",
-      "usesCleartextTraffic": true
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.CAMERA"
+      ]
     },
     "web": {
       "output": "static",
@@ -68,7 +75,8 @@
         "expo-build-properties",
         {
           "android": {
-            "kotlinVersion": "2.1.10"
+            "kotlinVersion": "2.1.10",
+            "usesCleartextTraffic": true
           }
         }
       ]
@@ -80,7 +88,7 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "b0ba96e0-a887-40a4-88e3-2d5b0f7f9115"
+        "projectId": "fb68fe65-a60a-46dd-891f-460505e44d28"
       }
     }
   }

@@ -6,7 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { api, API_BASE } from '@/lib/api';
 import { getSavedLevel, resolveLevel } from '@/lib/level';
 import * as FileSystem from 'expo-file-system/legacy';
-import MazeGame from '@/components/MazeGame';
+import MemoryGame from '@/components/MemoryGame';
 import EventSource from 'react-native-sse';
 
 export default function GenerationScreen() {
@@ -58,7 +58,7 @@ export default function GenerationScreen() {
         const es = new EventSource(url);
         sseRef.current = es;
 
-        es.addEventListener('agent-log', (event: any) => {
+        (es as any).addEventListener('agent-log', (event: any) => {
             if (event.data) {
                 setAgentLogs(prev => [...prev.slice(-49), event.data]);
                 setTimeout(() => logScrollRef.current?.scrollToEnd({ animated: true }), 50);
@@ -95,9 +95,9 @@ export default function GenerationScreen() {
             const resolvedLevel = hasLevelParam ? resolveLevel(level) : savedLevel;
             const levelKey = (resolvedLevel || 'L2').toUpperCase();
             const levelMap: Record<string, { age: string; budget: number }> = {
-                L1: { age: '4-5', budget: 400 },
-                L2: { age: '6-7', budget: 450 },
-                L3: { age: '8-10', budget: 500 },
+                L1: { age: '4-5', budget: 300 },
+                L2: { age: '6-7', budget: 350 },
+                L3: { age: '8-10', budget: 400 },
             };
             const levelConfig = levelMap[levelKey] || levelMap.L2;
             const genRes = await api.startGeneration({
@@ -182,7 +182,7 @@ export default function GenerationScreen() {
                 ) : status === 'processing' ? (
                     <View style={{ flex: 1 }}>
                         <View style={{ flex: 1 }}>
-                            <MazeGame />
+                            <MemoryGame />
                         </View>
                         {agentLogs.length > 0 && (
                             <View style={styles.logPanel}>

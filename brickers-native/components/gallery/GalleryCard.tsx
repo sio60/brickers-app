@@ -7,9 +7,10 @@ import type { GalleryItem } from '@/types/gallery';
 type Props = {
   item: GalleryItem;
   onPress: (item: GalleryItem) => void;
+  width?: number;
 };
 
-export default function GalleryCard({ item, onPress }: Props) {
+export default function GalleryCard({ item, onPress, width }: Props) {
   const imageUrl = item.thumbnailUrl || item.sourceImageUrl;
   const author = item.authorNickname || 'Anonymous';
   const likeCount = item.likeCount ?? 0;
@@ -17,7 +18,11 @@ export default function GalleryCard({ item, onPress }: Props) {
   const viewCount = item.viewCount ?? 0;
 
   return (
-    <TouchableOpacity style={styles.card} onPress={() => onPress(item)} activeOpacity={0.9}>
+    <TouchableOpacity
+      style={[styles.card, width ? { width, flex: 0 } : null]}
+      onPress={() => onPress(item)}
+      activeOpacity={0.9}
+    >
       <View style={styles.imageWrap}>
         {imageUrl ? (
           <Image source={{ uri: imageUrl }} style={styles.image} contentFit="cover" />

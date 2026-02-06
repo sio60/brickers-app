@@ -1,22 +1,45 @@
-import { StyleSheet, View, Pressable, Text, Dimensions, ActivityIndicator, TouchableOpacity } from 'react-native';
+import { StyleSheet, View, Pressable, Text, Dimensions, ActivityIndicator, TouchableOpacity, FlatList } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Background3D } from '@/components/Background3D';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import Animated, { interpolate, useAnimatedStyle, withSpring, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useAuth } from '@/lib/AuthContext';
 import { Image } from 'expo-image';
+import { api } from '@/lib/api';
+import GalleryCard from '@/components/gallery/GalleryCard';
+import type { GalleryItem, PageResponse } from '@/types/gallery';
 
-const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
 const SHEET_HEIGHT = 200;
 
 export default function HomeScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const { isLoggedIn, isLoading, login } = useAuth();
+  const { isLoggedIn, isLoading: authLoading, login } = useAuth();
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const translateY = useSharedValue(SHEET_HEIGHT);
+
+  const [galleryItems, setGalleryItems] = useState<GalleryItem[]>([]);
+  const [galleryLoading, setGalleryLoading] = useState(false);
+
+  const fetchGallery = useCallback(async () => {
+    setGalleryLoading(true);
+    try {
+      const res = await api.getGallery(0, 10, 'latest');
+      const data = res.data as PageResponse<GalleryItem>;
+      setGalleryItems(data.content || []);
+    } catch (err) {
+      console.error('[Home] Fetch gallery failed:', err);
+    } finally {
+      setGalleryLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchGallery();
+  }, [fetchGallery]);
 
   const toggleSheet = () => {
     const nextState = !isSheetOpen;
@@ -35,8 +58,12 @@ export default function HomeScreen() {
     transform: [{ translateY: interpolate(translateY.value, [0, SHEET_HEIGHT], [20, 0]) }],
   }));
 
+  const handleCardPress = (item: GalleryItem) => {
+    router.push({ pathname: '/(tabs)/explore/[id]', params: { id: item.id } });
+  };
+
   // 로그인하지 않은 상태의 화면
-  if (!isLoading && !isLoggedIn) {
+  if (!authLoading && !isLoggedIn) {
     return (
       <View style={[styles.loginContainer, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
         <View style={styles.loginContent}>
@@ -77,6 +104,35 @@ export default function HomeScreen() {
   return (
     <View style={styles.container}>
       <Background3D />
+
+      {/* Gallery Slider Overlay */}
+      <View style={[styles.overlay, { paddingTop: insets.top + 60 }]}>
+        <View style={styles.galleryHeader}>
+          <Text style={styles.galleryTitle}>최근 등록된 브릭</Text>
+          <TouchableOpacity onPress={() => router.push('/(tabs)/explore')}>
+            <Text style={styles.galleryMore}>더보기</Text>
+          </TouchableOpacity>
+        </View>
+
+        {galleryLoading ? (
+          <View style={styles.galleryLoading}>
+            <ActivityIndicator size="small" color="#555" />
+          </View>
+        ) : (
+          <FlatList
+            data={galleryItems}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={styles.galleryList}
+            renderItem={({ item }) => (
+              <GalleryCard item={item} onPress={handleCardPress} width={180} />
+            )}
+            snapToInterval={192} // width(180) + gap(12)
+            decelerationRate="fast"
+          />
+        )}
+      </View>
 
       {/* Main Content (Arrow at bottom) */}
       <View style={[styles.content, { paddingBottom: insets.bottom + 20 }]}>
@@ -229,5 +285,41 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     textTransform: 'uppercase',
     fontFamily: 'NotoSansKR_700Bold',
+  },
+  overlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 10,
+  },
+  galleryHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
+    paddingHorizontal: 24,
+    marginBottom: 16,
+  },
+  galleryTitle: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: '#111',
+    fontFamily: 'NotoSansKR_700Bold',
+  },
+  galleryMore: {
+    fontSize: 13,
+    color: '#666',
+    fontWeight: '600',
+    fontFamily: 'NotoSansKR_400Regular',
+  },
+  galleryLoading: {
+    height: 200,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  galleryList: {
+    paddingHorizontal: 24,
+    gap: 12,
+    paddingBottom: 20,
   },
 });
